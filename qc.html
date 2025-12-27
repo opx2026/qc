@@ -1,0 +1,1778 @@
+<!DOCTYPE html>
+<html lang="et">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Detailide QC</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a2e;
+            color: #fff;
+            min-height: 100vh;
+            padding: 10px;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            text-align: center;
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            color: #00d4ff;
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 15px;
+        }
+        
+        .tab {
+            flex: 1;
+            padding: 12px;
+            background: #16213e;
+            border: none;
+            color: #888;
+            font-size: 0.9rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .tab.active {
+            background: #0f3460;
+            color: #00d4ff;
+        }
+        
+        .panel {
+            display: none;
+            background: #16213e;
+            border-radius: 12px;
+            padding: 15px;
+        }
+        
+        .panel.active {
+            display: block;
+        }
+        
+        .upload-area {
+            border: 2px dashed #0f3460;
+            border-radius: 10px;
+            padding: 30px;
+            text-align: center;
+            margin-bottom: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .upload-area:hover, .upload-area.dragover {
+            border-color: #00d4ff;
+            background: rgba(0, 212, 255, 0.1);
+        }
+        
+        .upload-area input {
+            display: none;
+        }
+        
+        .upload-options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .upload-options .upload-area {
+            margin-bottom: 0;
+            padding: 20px 15px;
+        }
+        
+        /* Reference capture modal */
+        .ref-capture-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 1000;
+            padding: 10px;
+            overflow-y: auto;
+        }
+        
+        .ref-capture-modal.active {
+            display: block;
+        }
+        
+        .ref-capture-content {
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        
+        .ref-capture-content h3 {
+            text-align: center;
+            margin-bottom: 15px;
+            color: #00d4ff;
+        }
+        
+        .ref-camera-container {
+            position: relative;
+            margin-bottom: 15px;
+        }
+        
+        .ref-camera-container video,
+        .ref-camera-container img {
+            width: 100%;
+            border-radius: 10px;
+            background: #000;
+        }
+        
+        .ref-camera-container img {
+            display: none;
+        }
+        
+        .ref-name-input {
+            margin-bottom: 15px;
+        }
+        
+        .ref-name-input input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #0f3460;
+            border-radius: 8px;
+            background: #16213e;
+            color: #fff;
+            font-size: 1rem;
+        }
+        
+        .ref-name-input input:focus {
+            outline: none;
+            border-color: #00d4ff;
+        }
+        
+        .ref-controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+        }
+        
+        .ref-hint {
+            text-align: center;
+            font-size: 0.85rem;
+            color: #888;
+        }
+        
+        .upload-icon {
+            font-size: 3rem;
+            margin-bottom: 10px;
+        }
+        
+        .parts-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .part-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: #0f3460;
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+        
+        .part-item img {
+            width: 60px;
+            height: 60px;
+            object-fit: contain;
+            background: #fff;
+            border-radius: 5px;
+        }
+        
+        .part-info {
+            flex: 1;
+        }
+        
+        .part-name {
+            font-weight: bold;
+            margin-bottom: 3px;
+        }
+        
+        .part-dims {
+            font-size: 0.8rem;
+            color: #888;
+        }
+        
+        .delete-btn {
+            background: #e94560;
+            border: none;
+            color: #fff;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1.2rem;
+        }
+        
+        /* Camera panel */
+        .camera-container {
+            position: relative;
+            margin-bottom: 15px;
+        }
+        
+        #video, #capturedImage {
+            width: 100%;
+            border-radius: 10px;
+            background: #000;
+        }
+        
+        #capturedImage {
+            display: none;
+        }
+        
+        .camera-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+        }
+        
+        .camera-controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 15px;
+        }
+        
+        .btn {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 25px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background: #00d4ff;
+            color: #1a1a2e;
+        }
+        
+        .btn-secondary {
+            background: #0f3460;
+            color: #fff;
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        /* Results */
+        .results {
+            margin-top: 15px;
+        }
+        
+        .result-card {
+            background: #0f3460;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 10px;
+        }
+        
+        .result-card.pass {
+            border-left: 4px solid #00ff88;
+        }
+        
+        .result-card.fail {
+            border-left: 4px solid #e94560;
+        }
+        
+        .result-card.unknown {
+            border-left: 4px solid #ffa500;
+        }
+        
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .result-status {
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+        
+        .result-status.pass { color: #00ff88; }
+        .result-status.fail { color: #e94560; }
+        .result-status.unknown { color: #ffa500; }
+        
+        .result-details {
+            font-size: 0.85rem;
+            color: #aaa;
+        }
+        
+        .match-score {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .score-bar {
+            flex: 1;
+            height: 8px;
+            background: #1a1a2e;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .score-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.5s;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .stat-box {
+            background: #0f3460;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #00d4ff;
+        }
+        
+        .stat-label {
+            font-size: 0.75rem;
+            color: #888;
+            margin-top: 5px;
+        }
+        
+        /* Settings */
+        .setting-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #0f3460;
+        }
+        
+        .setting-row input[type="range"] {
+            width: 120px;
+        }
+        
+        .setting-row input[type="number"] {
+            width: 80px;
+            padding: 8px;
+            border: none;
+            border-radius: 5px;
+            background: #0f3460;
+            color: #fff;
+            text-align: center;
+        }
+        
+        /* Permission help styles */
+        .permission-help {
+            background: #2a1a3e;
+            border: 2px solid #e94560;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .help-header {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #e94560;
+            margin-bottom: 15px;
+        }
+        
+        .help-content {
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+        
+        .help-content p {
+            margin-bottom: 15px;
+            color: #ccc;
+        }
+        
+        .help-section {
+            background: #1a1a2e;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 10px;
+        }
+        
+        .help-section strong {
+            color: #00d4ff;
+            display: block;
+            margin-bottom: 8px;
+        }
+        
+        .help-section ol {
+            margin: 0;
+            padding-left: 20px;
+            color: #aaa;
+        }
+        
+        .help-section li {
+            margin-bottom: 5px;
+        }
+        
+        .permission-help .btn {
+            margin-top: 10px;
+            margin-right: 10px;
+        }
+        
+        .camera-status {
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 0.85rem;
+        }
+        
+        .camera-status.granted {
+            background: rgba(0, 255, 136, 0.2);
+            color: #00ff88;
+        }
+        
+        .camera-status.denied {
+            background: rgba(233, 69, 96, 0.2);
+            color: #e94560;
+        }
+        
+        .camera-status.prompt {
+            background: rgba(255, 165, 0, 0.2);
+            color: #ffa500;
+        }
+        
+        /* Loading */
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .loading.active {
+            display: block;
+        }
+        
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #0f3460;
+            border-top-color: #00d4ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Canvas for processing */
+        .hidden-canvas {
+            display: none;
+        }
+        
+        /* Toast notifications */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #0f3460;
+            padding: 12px 24px;
+            border-radius: 25px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 1000;
+        }
+        
+        .toast.show {
+            opacity: 1;
+        }
+        
+        .toast.success { background: #00ff88; color: #1a1a2e; }
+        .toast.error { background: #e94560; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Detailide QC</h1>
+        
+        <div class="tabs">
+            <button class="tab active" data-panel="parts">📋 Joonised</button>
+            <button class="tab" data-panel="camera">📷 Kontroll</button>
+            <button class="tab" data-panel="settings">⚙️ Seaded</button>
+        </div>
+        
+        <!-- Parts Panel -->
+        <div id="parts" class="panel active">
+            <div class="upload-options">
+                <div class="upload-area" id="pdfUpload">
+                    <input type="file" id="pdfInput" accept=".pdf,image/*" multiple>
+                    <div class="upload-icon">📄</div>
+                    <p>PDF või pilt failist</p>
+                </div>
+                
+                <div class="upload-area" id="cameraUpload">
+                    <div class="upload-icon">📸</div>
+                    <p>Pildista etalon</p>
+                </div>
+            </div>
+            
+            <!-- Reference capture modal -->
+            <div class="ref-capture-modal" id="refCaptureModal">
+                <div class="ref-capture-content">
+                    <h3>📸 Pildista etalondetail</h3>
+                    <div class="ref-camera-container">
+                        <video id="refVideo" autoplay playsinline></video>
+                        <img id="refCapturedImage" alt="Captured reference">
+                        <canvas id="refOverlayCanvas" class="camera-overlay"></canvas>
+                    </div>
+                    
+                    <div class="ref-name-input" id="refNameInput" style="display: none;">
+                        <input type="text" id="partNameInput" placeholder="Detaili nimi (nt. Plaat A1)">
+                    </div>
+                    
+                    <div class="ref-controls">
+                        <button class="btn btn-secondary" id="refCancelBtn">❌ Tühista</button>
+                        <button class="btn btn-primary" id="refCaptureBtn">📸 Pildista</button>
+                        <button class="btn btn-secondary" id="refRetakeBtn" style="display: none;">🔄 Uuesti</button>
+                        <button class="btn btn-primary" id="refSaveBtn" style="display: none;">✅ Salvesta</button>
+                    </div>
+                    
+                    <p class="ref-hint">💡 Aseta detail kontrastsele taustale ja pildista otse pealt</p>
+                </div>
+            </div>
+            
+            <div class="loading" id="pdfLoading">
+                <div class="spinner"></div>
+                <p>Töötlen...</p>
+            </div>
+            
+            <div class="parts-list" id="partsList"></div>
+            
+            <div style="text-align: center; margin-top: 15px;">
+                <button class="btn btn-secondary" id="clearParts" style="display: none;">
+                    🗑️ Tühjenda kõik
+                </button>
+            </div>
+        </div>
+        
+        <!-- Camera Panel -->
+        <div id="camera" class="panel">
+            <div class="camera-container">
+                <video id="video" autoplay playsinline></video>
+                <img id="capturedImage" alt="Captured">
+                <canvas id="overlayCanvas" class="camera-overlay"></canvas>
+            </div>
+            
+            <div class="camera-controls">
+                <button class="btn btn-primary" id="captureBtn" disabled>📸 Pildista</button>
+                <button class="btn btn-secondary" id="retakeBtn" style="display: none;">🔄 Uuesti</button>
+                <button class="btn btn-primary" id="analyzeBtn" style="display: none;">🔍 Analüüsi</button>
+            </div>
+            
+            <div class="loading" id="analyzeLoading">
+                <div class="spinner"></div>
+                <p>Analüüsin detaile...</p>
+            </div>
+            
+            <div class="results" id="results"></div>
+            
+            <div class="stats" id="stats" style="display: none;">
+                <div class="stat-box">
+                    <div class="stat-value" id="totalCount">0</div>
+                    <div class="stat-label">Kokku</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value" id="passCount">0</div>
+                    <div class="stat-label">OK</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value" id="failCount">0</div>
+                    <div class="stat-label">Praak</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Settings Panel -->
+        <div id="settings" class="panel">
+            <!-- Camera permission help -->
+            <div class="permission-help" id="cameraPermissionHelp" style="display: none;">
+                <div class="help-header">⚠️ Kaamera ligipääs vajalik</div>
+                <div class="help-content">
+                    <p>Rakendus vajab kaamera kasutamiseks luba. Järgi oma seadme juhiseid:</p>
+                    
+                    <div class="help-section" id="httpsWarning" style="display: none;">
+                        <strong>🔒 HTTPS nõutud!</strong>
+                        <p style="margin: 10px 0 0 0;">Kaamera töötab ainult turvalise ühendusega (HTTPS). Praegune ühendus: <code id="currentProtocol"></code></p>
+                        <p style="margin: 10px 0 0 0;"><strong>Lahendused:</strong></p>
+                        <ol>
+                            <li>Lae fail üles veebiserverisse (GitHub Pages, Netlify vms)</li>
+                            <li>Kasuta lokaalset serverit: <code>python -m http.server</code></li>
+                            <li>Kasuta ngrok'i HTTPS tunneli jaoks</li>
+                        </ol>
+                    </div>
+                    
+                    <div class="help-section">
+                        <strong>📱 iPhone / Safari:</strong>
+                        <ol>
+                            <li>Vajuta aadressiribal "aA" nupule</li>
+                            <li>Vali "Website Settings"</li>
+                            <li>Luba "Camera"</li>
+                            <li>Värskenda lehte</li>
+                        </ol>
+                    </div>
+                    
+                    <div class="help-section">
+                        <strong>📱 Android / Chrome:</strong>
+                        <ol>
+                            <li>Vajuta aadressiribal lukuikoonile 🔒</li>
+                            <li>Vali "Permissions" või "Site settings"</li>
+                            <li>Luba "Camera"</li>
+                            <li>Värskenda lehte</li>
+                        </ol>
+                    </div>
+                    
+                    <div class="help-section">
+                        <strong>💻 Arvutis:</strong>
+                        <ol>
+                            <li>Vajuta aadressiribal kaameraikoonile</li>
+                            <li>Vali "Allow"</li>
+                            <li>Värskenda lehte</li>
+                        </ol>
+                    </div>
+                </div>
+                <button class="btn btn-primary" onclick="location.reload()">🔄 Värskenda lehte</button>
+                <button class="btn btn-secondary" onclick="testCameraPermission()">🎥 Proovi uuesti</button>
+            </div>
+            
+            <div class="setting-row">
+                <span>Sarnasuse lävi (%)</span>
+                <input type="number" id="threshold" value="70" min="50" max="95">
+            </div>
+            <div class="setting-row">
+                <span>Suuruse tolerants (%)</span>
+                <input type="number" id="sizeTolerance" value="15" min="5" max="30">
+            </div>
+            <div class="setting-row">
+                <span>Min. detaili suurus (px)</span>
+                <input type="number" id="minSize" value="50" min="20" max="200">
+            </div>
+            <div class="setting-row">
+                <span>Kaamera valik</span>
+                <select id="cameraSelect" style="padding: 8px; border-radius: 5px; background: #0f3460; color: #fff; border: none;">
+                    <option value="environment">Tagumine</option>
+                    <option value="user">Eesmine</option>
+                </select>
+            </div>
+            
+            <div class="setting-row">
+                <span>Kaamera olek</span>
+                <span id="cameraStatus" class="camera-status">🔄 Kontrollimata</span>
+            </div>
+            
+            <button class="btn btn-secondary" onclick="testCameraPermission()" style="width: 100%; margin-top: 15px;">
+                🎥 Testi kaamera ligipääsu
+            </button>
+        </div>
+    </div>
+    
+    <!-- Hidden canvases for image processing -->
+    <canvas id="processCanvas" class="hidden-canvas"></canvas>
+    <canvas id="partCanvas" class="hidden-canvas"></canvas>
+    
+    <div class="toast" id="toast"></div>
+    
+    <script>
+        // PDF.js worker
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        
+        // App state
+        const state = {
+            parts: [],
+            stream: null,
+            capturedImageData: null,
+            stats: { total: 0, pass: 0, fail: 0 }
+        };
+        
+        // DOM elements
+        const elements = {
+            tabs: document.querySelectorAll('.tab'),
+            panels: document.querySelectorAll('.panel'),
+            pdfUpload: document.getElementById('pdfUpload'),
+            pdfInput: document.getElementById('pdfInput'),
+            pdfLoading: document.getElementById('pdfLoading'),
+            partsList: document.getElementById('partsList'),
+            clearParts: document.getElementById('clearParts'),
+            video: document.getElementById('video'),
+            capturedImage: document.getElementById('capturedImage'),
+            captureBtn: document.getElementById('captureBtn'),
+            retakeBtn: document.getElementById('retakeBtn'),
+            analyzeBtn: document.getElementById('analyzeBtn'),
+            analyzeLoading: document.getElementById('analyzeLoading'),
+            results: document.getElementById('results'),
+            stats: document.getElementById('stats'),
+            processCanvas: document.getElementById('processCanvas'),
+            partCanvas: document.getElementById('partCanvas'),
+            overlayCanvas: document.getElementById('overlayCanvas'),
+            toast: document.getElementById('toast'),
+            // Reference capture elements
+            cameraUpload: document.getElementById('cameraUpload'),
+            refCaptureModal: document.getElementById('refCaptureModal'),
+            refVideo: document.getElementById('refVideo'),
+            refCapturedImage: document.getElementById('refCapturedImage'),
+            refOverlayCanvas: document.getElementById('refOverlayCanvas'),
+            refCaptureBtn: document.getElementById('refCaptureBtn'),
+            refRetakeBtn: document.getElementById('refRetakeBtn'),
+            refSaveBtn: document.getElementById('refSaveBtn'),
+            refCancelBtn: document.getElementById('refCancelBtn'),
+            refNameInput: document.getElementById('refNameInput'),
+            partNameInput: document.getElementById('partNameInput')
+        };
+        
+        // Reference camera stream
+        let refStream = null;
+        let refCapturedData = null;
+        
+        // Tab switching
+        elements.tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const panelId = tab.dataset.panel;
+                
+                elements.tabs.forEach(t => t.classList.remove('active'));
+                elements.panels.forEach(p => p.classList.remove('active'));
+                
+                tab.classList.add('active');
+                document.getElementById(panelId).classList.add('active');
+                
+                if (panelId === 'camera') {
+                    startCamera();
+                } else {
+                    stopCamera();
+                }
+            });
+        });
+        
+        // PDF/Image upload
+        elements.pdfUpload.addEventListener('click', () => elements.pdfInput.click());
+        elements.pdfUpload.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            elements.pdfUpload.classList.add('dragover');
+        });
+        elements.pdfUpload.addEventListener('dragleave', () => {
+            elements.pdfUpload.classList.remove('dragover');
+        });
+        elements.pdfUpload.addEventListener('drop', (e) => {
+            e.preventDefault();
+            elements.pdfUpload.classList.remove('dragover');
+            handleFiles(e.dataTransfer.files);
+        });
+        elements.pdfInput.addEventListener('change', (e) => handleFiles(e.target.files));
+        
+        // Reference camera capture
+        elements.cameraUpload.addEventListener('click', openRefCapture);
+        elements.refCancelBtn.addEventListener('click', closeRefCapture);
+        elements.refCaptureBtn.addEventListener('click', captureReference);
+        elements.refRetakeBtn.addEventListener('click', retakeReference);
+        elements.refSaveBtn.addEventListener('click', saveReference);
+        
+        async function openRefCapture() {
+            elements.refCaptureModal.classList.add('active');
+            
+            try {
+                refStream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: 'environment',
+                        width: { ideal: 1920 },
+                        height: { ideal: 1080 }
+                    }
+                });
+                
+                elements.refVideo.srcObject = refStream;
+                elements.refVideo.style.display = 'block';
+                elements.refCapturedImage.style.display = 'none';
+                elements.refCaptureBtn.style.display = 'inline-block';
+                elements.refRetakeBtn.style.display = 'none';
+                elements.refSaveBtn.style.display = 'none';
+                elements.refNameInput.style.display = 'none';
+            } catch (error) {
+                console.error('Camera error:', error);
+                closeRefCapture();
+                handleCameraError(error);
+            }
+        }
+        
+        function closeRefCapture() {
+            if (refStream) {
+                refStream.getTracks().forEach(track => track.stop());
+                refStream = null;
+            }
+            elements.refCaptureModal.classList.remove('active');
+            refCapturedData = null;
+        }
+        
+        function captureReference() {
+            const canvas = elements.processCanvas;
+            const ctx = canvas.getContext('2d');
+            
+            canvas.width = elements.refVideo.videoWidth;
+            canvas.height = elements.refVideo.videoHeight;
+            ctx.drawImage(elements.refVideo, 0, 0);
+            
+            refCapturedData = {
+                imageData: ctx.getImageData(0, 0, canvas.width, canvas.height),
+                dataUrl: canvas.toDataURL('image/png'),
+                width: canvas.width,
+                height: canvas.height
+            };
+            
+            elements.refCapturedImage.src = refCapturedData.dataUrl;
+            elements.refVideo.style.display = 'none';
+            elements.refCapturedImage.style.display = 'block';
+            elements.refCaptureBtn.style.display = 'none';
+            elements.refRetakeBtn.style.display = 'inline-block';
+            elements.refSaveBtn.style.display = 'inline-block';
+            elements.refNameInput.style.display = 'block';
+            elements.partNameInput.value = '';
+            elements.partNameInput.focus();
+            
+            // Draw detected contour overlay
+            drawRefContourPreview();
+        }
+        
+        function drawRefContourPreview() {
+            if (!refCapturedData) return;
+            
+            const canvas = elements.refOverlayCanvas;
+            const ctx = canvas.getContext('2d');
+            
+            canvas.width = elements.refCapturedImage.clientWidth;
+            canvas.height = elements.refCapturedImage.clientHeight;
+            
+            // Detect parts in captured image
+            const detectedParts = detectPartsInImage(refCapturedData.imageData);
+            
+            if (detectedParts.length === 0) {
+                showToast('Detaili ei tuvastatud, proovi uuesti', 'error');
+                return;
+            }
+            
+            const scaleX = canvas.width / refCapturedData.width;
+            const scaleY = canvas.height / refCapturedData.height;
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw bounding boxes for detected parts
+            detectedParts.forEach((part, idx) => {
+                const bb = part.contour.boundingBox;
+                
+                ctx.strokeStyle = '#00d4ff';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([5, 5]);
+                ctx.strokeRect(
+                    bb.x * scaleX,
+                    bb.y * scaleY,
+                    bb.width * scaleX,
+                    bb.height * scaleY
+                );
+                
+                ctx.fillStyle = '#00d4ff';
+                ctx.font = 'bold 12px sans-serif';
+                ctx.fillText(
+                    `Leitud #${idx + 1}`,
+                    bb.x * scaleX,
+                    bb.y * scaleY - 5
+                );
+            });
+            
+            // Store detected parts for saving
+            refCapturedData.detectedParts = detectedParts;
+            
+            showToast(`Leitud ${detectedParts.length} kujund(it)`, 'success');
+        }
+        
+        function retakeReference() {
+            elements.refVideo.style.display = 'block';
+            elements.refCapturedImage.style.display = 'none';
+            elements.refCaptureBtn.style.display = 'inline-block';
+            elements.refRetakeBtn.style.display = 'none';
+            elements.refSaveBtn.style.display = 'none';
+            elements.refNameInput.style.display = 'none';
+            refCapturedData = null;
+            
+            // Clear overlay
+            const ctx = elements.refOverlayCanvas.getContext('2d');
+            ctx.clearRect(0, 0, elements.refOverlayCanvas.width, elements.refOverlayCanvas.height);
+        }
+        
+        function saveReference() {
+            if (!refCapturedData || !refCapturedData.detectedParts) {
+                showToast('Pole midagi salvestada', 'error');
+                return;
+            }
+            
+            const baseName = elements.partNameInput.value.trim() || 'Etalon';
+            
+            refCapturedData.detectedParts.forEach((part, idx) => {
+                const bb = part.contour.boundingBox;
+                
+                // Crop the part from the image
+                const cropCanvas = document.createElement('canvas');
+                const cropCtx = cropCanvas.getContext('2d');
+                cropCanvas.width = bb.width;
+                cropCanvas.height = bb.height;
+                
+                // Create image from captured data
+                const img = new Image();
+                img.onload = () => {
+                    cropCtx.drawImage(
+                        img,
+                        bb.x, bb.y, bb.width, bb.height,
+                        0, 0, bb.width, bb.height
+                    );
+                    
+                    const partName = refCapturedData.detectedParts.length > 1 
+                        ? `${baseName} #${idx + 1}` 
+                        : baseName;
+                    
+                    state.parts.push({
+                        id: Date.now() + idx,
+                        name: partName,
+                        thumbnail: cropCanvas.toDataURL('image/png'),
+                        contour: part.contour,
+                        width: bb.width,
+                        height: bb.height,
+                        source: 'camera'
+                    });
+                    
+                    if (idx === refCapturedData.detectedParts.length - 1) {
+                        renderPartsList();
+                        showToast(`${refCapturedData.detectedParts.length} etalon(i) salvestatud`, 'success');
+                        closeRefCapture();
+                    }
+                };
+                img.src = refCapturedData.dataUrl;
+            });
+        }
+        
+        async function handleFiles(files) {
+            elements.pdfLoading.classList.add('active');
+            
+            for (const file of files) {
+                if (file.type === 'application/pdf') {
+                    await processPDF(file);
+                } else if (file.type.startsWith('image/')) {
+                    await processImage(file);
+                }
+            }
+            
+            elements.pdfLoading.classList.remove('active');
+            renderPartsList();
+        }
+        
+        async function processPDF(file) {
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                
+                for (let i = 1; i <= pdf.numPages; i++) {
+                    const page = await pdf.getPage(i);
+                    const scale = 2;
+                    const viewport = page.getViewport({ scale });
+                    
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    canvas.width = viewport.width;
+                    canvas.height = viewport.height;
+                    
+                    await page.render({
+                        canvasContext: ctx,
+                        viewport: viewport
+                    }).promise;
+                    
+                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    const contour = extractContour(imageData);
+                    
+                    if (contour) {
+                        state.parts.push({
+                            id: Date.now() + i,
+                            name: `${file.name} - lk ${i}`,
+                            thumbnail: canvas.toDataURL('image/png'),
+                            contour: contour,
+                            width: canvas.width,
+                            height: canvas.height,
+                            source: 'file'
+                        });
+                    }
+                }
+                
+                showToast(`PDF lisatud: ${pdf.numPages} lehte`, 'success');
+            } catch (error) {
+                console.error('PDF error:', error);
+                showToast('PDF töötlemine ebaõnnestus', 'error');
+            }
+        }
+        
+        async function processImage(file) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    ctx.drawImage(img, 0, 0);
+                    
+                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    const contour = extractContour(imageData);
+                    
+                    if (contour) {
+                        state.parts.push({
+                            id: Date.now(),
+                            name: file.name,
+                            thumbnail: canvas.toDataURL('image/png'),
+                            contour: contour,
+                            width: canvas.width,
+                            height: canvas.height,
+                            source: 'file'
+                        });
+                        showToast('Pilt lisatud', 'success');
+                    }
+                    
+                    resolve();
+                };
+                img.src = URL.createObjectURL(file);
+            });
+        }
+        
+        // Contour extraction using edge detection
+        function extractContour(imageData) {
+            const { width, height, data } = imageData;
+            
+            // Convert to grayscale
+            const gray = new Uint8Array(width * height);
+            for (let i = 0; i < data.length; i += 4) {
+                gray[i / 4] = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+            }
+            
+            // Apply threshold
+            const binary = new Uint8Array(width * height);
+            const threshold = 128;
+            for (let i = 0; i < gray.length; i++) {
+                binary[i] = gray[i] < threshold ? 255 : 0;
+            }
+            
+            // Find contour points (simple edge detection)
+            const contourPoints = [];
+            for (let y = 1; y < height - 1; y++) {
+                for (let x = 1; x < width - 1; x++) {
+                    const idx = y * width + x;
+                    if (binary[idx] === 255) {
+                        // Check if edge pixel
+                        const neighbors = [
+                            binary[idx - 1],
+                            binary[idx + 1],
+                            binary[idx - width],
+                            binary[idx + width]
+                        ];
+                        if (neighbors.some(n => n === 0)) {
+                            contourPoints.push({ x, y });
+                        }
+                    }
+                }
+            }
+            
+            // Compute bounding box and normalize
+            if (contourPoints.length < 10) return null;
+            
+            let minX = Infinity, minY = Infinity, maxX = 0, maxY = 0;
+            for (const p of contourPoints) {
+                minX = Math.min(minX, p.x);
+                minY = Math.min(minY, p.y);
+                maxX = Math.max(maxX, p.x);
+                maxY = Math.max(maxY, p.y);
+            }
+            
+            const contourWidth = maxX - minX;
+            const contourHeight = maxY - minY;
+            
+            // Normalize points (0-1 range)
+            const normalized = contourPoints.map(p => ({
+                x: (p.x - minX) / contourWidth,
+                y: (p.y - minY) / contourHeight
+            }));
+            
+            // Compute shape descriptor (Hu moments approximation)
+            const descriptor = computeShapeDescriptor(normalized, contourWidth, contourHeight);
+            
+            return {
+                points: normalized,
+                width: contourWidth,
+                height: contourHeight,
+                aspectRatio: contourWidth / contourHeight,
+                descriptor: descriptor
+            };
+        }
+        
+        function computeShapeDescriptor(points, width, height) {
+            // Simplified shape descriptor based on radial distribution
+            const centerX = 0.5;
+            const centerY = 0.5;
+            const numBins = 16;
+            const bins = new Array(numBins).fill(0);
+            
+            for (const p of points) {
+                const angle = Math.atan2(p.y - centerY, p.x - centerX);
+                const binIdx = Math.floor(((angle + Math.PI) / (2 * Math.PI)) * numBins) % numBins;
+                const dist = Math.sqrt((p.x - centerX) ** 2 + (p.y - centerY) ** 2);
+                bins[binIdx] += dist;
+            }
+            
+            // Normalize
+            const sum = bins.reduce((a, b) => a + b, 0);
+            return bins.map(b => b / sum);
+        }
+        
+        function renderPartsList() {
+            elements.partsList.innerHTML = state.parts.map((part, idx) => `
+                <div class="part-item">
+                    <img src="${part.thumbnail}" alt="${part.name}">
+                    <div class="part-info">
+                        <div class="part-name">${part.name}</div>
+                        <div class="part-dims">
+                            ${part.contour.width.toFixed(0)} × ${part.contour.height.toFixed(0)} px
+                            <span style="color: ${part.source === 'camera' ? '#00d4ff' : '#888'};">
+                                ${part.source === 'camera' ? '📸' : '📄'}
+                            </span>
+                        </div>
+                    </div>
+                    <button class="delete-btn" onclick="deletePart(${idx})">×</button>
+                </div>
+            `).join('');
+            
+            elements.clearParts.style.display = state.parts.length > 0 ? 'inline-block' : 'none';
+        }
+        
+        function deletePart(index) {
+            state.parts.splice(index, 1);
+            renderPartsList();
+        }
+        
+        elements.clearParts.addEventListener('click', () => {
+            if (confirm('Kustutada kõik joonised?')) {
+                state.parts = [];
+                renderPartsList();
+            }
+        });
+        
+        // Camera functions
+        async function startCamera() {
+            console.log('startCamera called');
+            
+            // Stop any existing streams first
+            stopCamera();
+            
+            // Also make sure ref camera is stopped
+            if (refStream) {
+                refStream.getTracks().forEach(track => track.stop());
+                refStream = null;
+            }
+            
+            const cameraType = document.getElementById('cameraSelect').value;
+            console.log('Camera type:', cameraType);
+            
+            try {
+                state.stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: cameraType,
+                        width: { ideal: 1920 },
+                        height: { ideal: 1080 }
+                    }
+                });
+                
+                console.log('Got stream:', state.stream);
+                
+                elements.video.srcObject = state.stream;
+                
+                // Wait for video to be ready
+                elements.video.onloadedmetadata = () => {
+                    console.log('Video metadata loaded:', elements.video.videoWidth, 'x', elements.video.videoHeight);
+                    elements.captureBtn.disabled = false;
+                    showToast('Kaamera valmis!', 'success');
+                };
+                
+                await elements.video.play();
+                console.log('Video playing');
+                
+                resetCameraView();
+            } catch (error) {
+                console.error('Camera error:', error);
+                handleCameraError(error);
+            }
+        }
+        
+        function stopCamera() {
+            if (state.stream) {
+                state.stream.getTracks().forEach(track => track.stop());
+                state.stream = null;
+            }
+            if (elements.video) {
+                elements.video.srcObject = null;
+            }
+        }
+        
+        function handleCameraError(error) {
+            let message = '';
+            let showSettings = false;
+            
+            if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+                message = 'Kaamera ligipääs keelatud';
+                showSettings = true;
+            } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+                message = 'Kaamerat ei leitud';
+            } else if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
+                message = 'Kaamera on juba kasutusel';
+            } else if (error.name === 'OverconstrainedError') {
+                message = 'Kaamera ei toeta nõutud seadeid';
+            } else if (error.name === 'SecurityError' || error.name === 'TypeError') {
+                message = 'HTTPS nõutud kaamera kasutamiseks';
+                showSettings = true;
+            } else {
+                message = 'Kaamera viga: ' + error.message;
+            }
+            
+            if (showSettings) {
+                showCameraPermissionHelp();
+            } else {
+                showToast(message, 'error');
+            }
+        }
+        
+        function showCameraPermissionHelp() {
+            // Switch to settings tab and show help
+            elements.tabs.forEach(t => t.classList.remove('active'));
+            elements.panels.forEach(p => p.classList.remove('active'));
+            
+            document.querySelector('[data-panel="settings"]').classList.add('active');
+            document.getElementById('settings').classList.add('active');
+            
+            // Show permission help
+            const helpBox = document.getElementById('cameraPermissionHelp');
+            if (helpBox) {
+                helpBox.style.display = 'block';
+            }
+            
+            // Check if HTTPS issue
+            const isSecure = location.protocol === 'https:' || 
+                             location.hostname === 'localhost' || 
+                             location.hostname === '127.0.0.1';
+            
+            const httpsWarning = document.getElementById('httpsWarning');
+            const protocolDisplay = document.getElementById('currentProtocol');
+            
+            if (!isSecure && httpsWarning) {
+                httpsWarning.style.display = 'block';
+                if (protocolDisplay) {
+                    protocolDisplay.textContent = location.protocol + '//' + location.hostname;
+                }
+            }
+            
+            showToast('Kaamera vajab seadistamist', 'error');
+        }
+        
+        function resetCameraView() {
+            elements.video.style.display = 'block';
+            elements.capturedImage.style.display = 'none';
+            elements.captureBtn.style.display = 'inline-block';
+            elements.captureBtn.disabled = false;
+            elements.retakeBtn.style.display = 'none';
+            elements.analyzeBtn.style.display = 'none';
+            state.capturedImageData = null;
+            
+            // Clear overlay
+            const ctx = elements.overlayCanvas.getContext('2d');
+            ctx.clearRect(0, 0, elements.overlayCanvas.width, elements.overlayCanvas.height);
+        }
+        
+        elements.captureBtn.addEventListener('click', () => {
+            // Check if video is ready
+            if (!elements.video.videoWidth || elements.video.videoWidth === 0) {
+                showToast('Kaamera pole valmis, oota hetk...', 'error');
+                return;
+            }
+            
+            const canvas = elements.processCanvas;
+            const ctx = canvas.getContext('2d');
+            
+            canvas.width = elements.video.videoWidth;
+            canvas.height = elements.video.videoHeight;
+            ctx.drawImage(elements.video, 0, 0);
+            
+            state.capturedImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            elements.capturedImage.src = canvas.toDataURL('image/png');
+            
+            elements.video.style.display = 'none';
+            elements.capturedImage.style.display = 'block';
+            elements.captureBtn.style.display = 'none';
+            elements.retakeBtn.style.display = 'inline-block';
+            elements.analyzeBtn.style.display = 'inline-block';
+            
+            showToast('Pilt tehtud!', 'success');
+        });
+        
+        elements.retakeBtn.addEventListener('click', resetCameraView);
+        
+        elements.analyzeBtn.addEventListener('click', async () => {
+            if (!state.capturedImageData || state.parts.length === 0) {
+                showToast('Lisa esmalt joonised!', 'error');
+                return;
+            }
+            
+            elements.analyzeLoading.classList.add('active');
+            elements.results.innerHTML = '';
+            
+            // Give UI time to update
+            await new Promise(r => setTimeout(r, 100));
+            
+            try {
+                const detectedParts = detectPartsInImage(state.capturedImageData);
+                const results = matchPartsToReferences(detectedParts);
+                displayResults(results);
+            } catch (error) {
+                console.error('Analysis error:', error);
+                showToast('Analüüs ebaõnnestus', 'error');
+            }
+            
+            elements.analyzeLoading.classList.remove('active');
+        });
+        
+        function detectPartsInImage(imageData) {
+            const { width, height, data } = imageData;
+            const minSize = parseInt(document.getElementById('minSize').value);
+            
+            // Convert to grayscale and find objects
+            const gray = new Uint8Array(width * height);
+            for (let i = 0; i < data.length; i += 4) {
+                gray[i / 4] = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+            }
+            
+            // Adaptive threshold
+            const blockSize = 15;
+            const binary = adaptiveThreshold(gray, width, height, blockSize);
+            
+            // Connected component labeling
+            const parts = findConnectedComponents(binary, width, height, minSize);
+            
+            return parts.map(region => {
+                const contour = extractContourFromRegion(region, width, height);
+                return {
+                    ...region,
+                    contour: contour
+                };
+            }).filter(p => p.contour !== null);
+        }
+        
+        function adaptiveThreshold(gray, width, height, blockSize) {
+            const binary = new Uint8Array(width * height);
+            const halfBlock = Math.floor(blockSize / 2);
+            
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    let sum = 0, count = 0;
+                    
+                    for (let dy = -halfBlock; dy <= halfBlock; dy++) {
+                        for (let dx = -halfBlock; dx <= halfBlock; dx++) {
+                            const ny = y + dy, nx = x + dx;
+                            if (ny >= 0 && ny < height && nx >= 0 && nx < width) {
+                                sum += gray[ny * width + nx];
+                                count++;
+                            }
+                        }
+                    }
+                    
+                    const mean = sum / count;
+                    const idx = y * width + x;
+                    binary[idx] = gray[idx] < mean - 10 ? 255 : 0;
+                }
+            }
+            
+            return binary;
+        }
+        
+        function findConnectedComponents(binary, width, height, minSize) {
+            const labels = new Int32Array(width * height);
+            let currentLabel = 0;
+            const regions = [];
+            
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    const idx = y * width + x;
+                    if (binary[idx] === 255 && labels[idx] === 0) {
+                        currentLabel++;
+                        const region = floodFill(binary, labels, width, height, x, y, currentLabel);
+                        
+                        if (region.area >= minSize * minSize) {
+                            regions.push(region);
+                        }
+                    }
+                }
+            }
+            
+            return regions;
+        }
+        
+        function floodFill(binary, labels, width, height, startX, startY, label) {
+            const stack = [{ x: startX, y: startY }];
+            let minX = startX, maxX = startX, minY = startY, maxY = startY;
+            let area = 0;
+            const points = [];
+            
+            while (stack.length > 0) {
+                const { x, y } = stack.pop();
+                const idx = y * width + x;
+                
+                if (x < 0 || x >= width || y < 0 || y >= height) continue;
+                if (binary[idx] !== 255 || labels[idx] !== 0) continue;
+                
+                labels[idx] = label;
+                area++;
+                points.push({ x, y });
+                
+                minX = Math.min(minX, x);
+                maxX = Math.max(maxX, x);
+                minY = Math.min(minY, y);
+                maxY = Math.max(maxY, y);
+                
+                stack.push({ x: x + 1, y });
+                stack.push({ x: x - 1, y });
+                stack.push({ x, y: y + 1 });
+                stack.push({ x, y: y - 1 });
+            }
+            
+            return {
+                label,
+                minX, maxX, minY, maxY,
+                width: maxX - minX,
+                height: maxY - minY,
+                area,
+                points
+            };
+        }
+        
+        function extractContourFromRegion(region, imgWidth, imgHeight) {
+            if (region.points.length < 20) return null;
+            
+            const contourPoints = region.points.filter(p => {
+                // Edge detection within region
+                const neighbors = [
+                    { x: p.x - 1, y: p.y },
+                    { x: p.x + 1, y: p.y },
+                    { x: p.x, y: p.y - 1 },
+                    { x: p.x, y: p.y + 1 }
+                ];
+                
+                return neighbors.some(n => 
+                    !region.points.some(rp => rp.x === n.x && rp.y === n.y)
+                );
+            });
+            
+            if (contourPoints.length < 10) return null;
+            
+            // Normalize
+            const normalized = contourPoints.map(p => ({
+                x: (p.x - region.minX) / region.width,
+                y: (p.y - region.minY) / region.height
+            }));
+            
+            const descriptor = computeShapeDescriptor(normalized, region.width, region.height);
+            
+            return {
+                points: normalized,
+                width: region.width,
+                height: region.height,
+                aspectRatio: region.width / region.height,
+                descriptor: descriptor,
+                boundingBox: {
+                    x: region.minX,
+                    y: region.minY,
+                    width: region.width,
+                    height: region.height
+                }
+            };
+        }
+        
+        function matchPartsToReferences(detectedParts) {
+            const threshold = parseInt(document.getElementById('threshold').value) / 100;
+            const sizeTolerance = parseInt(document.getElementById('sizeTolerance').value) / 100;
+            
+            return detectedParts.map(detected => {
+                let bestMatch = null;
+                let bestScore = 0;
+                
+                for (const ref of state.parts) {
+                    // Compare shape descriptors
+                    const shapeScore = compareDescriptors(detected.contour.descriptor, ref.contour.descriptor);
+                    
+                    // Compare aspect ratio
+                    const arScore = 1 - Math.abs(detected.contour.aspectRatio - ref.contour.aspectRatio) / 
+                                    Math.max(detected.contour.aspectRatio, ref.contour.aspectRatio);
+                    
+                    // Combined score
+                    const score = 0.7 * shapeScore + 0.3 * arScore;
+                    
+                    if (score > bestScore) {
+                        bestScore = score;
+                        bestMatch = ref;
+                    }
+                }
+                
+                const passed = bestScore >= threshold;
+                
+                return {
+                    detected,
+                    matchedRef: bestMatch,
+                    score: bestScore,
+                    passed,
+                    status: bestScore >= threshold ? 'pass' : 
+                            bestScore >= threshold * 0.7 ? 'unknown' : 'fail'
+                };
+            });
+        }
+        
+        function compareDescriptors(desc1, desc2) {
+            if (!desc1 || !desc2) return 0;
+            
+            let similarity = 0;
+            for (let i = 0; i < desc1.length; i++) {
+                similarity += 1 - Math.abs(desc1[i] - desc2[i]);
+            }
+            return similarity / desc1.length;
+        }
+        
+        function displayResults(results) {
+            // Update stats
+            state.stats.total += results.length;
+            state.stats.pass += results.filter(r => r.status === 'pass').length;
+            state.stats.fail += results.filter(r => r.status === 'fail').length;
+            
+            document.getElementById('totalCount').textContent = state.stats.total;
+            document.getElementById('passCount').textContent = state.stats.pass;
+            document.getElementById('failCount').textContent = state.stats.fail;
+            elements.stats.style.display = 'grid';
+            
+            // Display results
+            if (results.length === 0) {
+                elements.results.innerHTML = `
+                    <div class="result-card unknown">
+                        <div class="result-status unknown">Detaile ei leitud</div>
+                        <div class="result-details">Proovi teist nurka või paremat valgustust</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            elements.results.innerHTML = results.map((result, idx) => {
+                const scorePercent = (result.score * 100).toFixed(0);
+                const statusText = result.status === 'pass' ? 'OK' : 
+                                   result.status === 'fail' ? 'PRAAK' : 'KAHTLANE';
+                const statusColor = result.status === 'pass' ? '#00ff88' : 
+                                    result.status === 'fail' ? '#e94560' : '#ffa500';
+                
+                return `
+                    <div class="result-card ${result.status}">
+                        <div class="result-header">
+                            <span>Detail #${idx + 1}</span>
+                            <span class="result-status ${result.status}">${statusText}</span>
+                        </div>
+                        ${result.matchedRef ? `
+                            <div class="result-details">
+                                Vastab: ${result.matchedRef.name}
+                            </div>
+                        ` : ''}
+                        <div class="match-score">
+                            <span>Sarnasus:</span>
+                            <div class="score-bar">
+                                <div class="score-fill" style="width: ${scorePercent}%; background: ${statusColor};"></div>
+                            </div>
+                            <span>${scorePercent}%</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            // Draw overlays
+            drawResultOverlays(results);
+        }
+        
+        function drawResultOverlays(results) {
+            const canvas = elements.overlayCanvas;
+            const ctx = canvas.getContext('2d');
+            
+            canvas.width = elements.capturedImage.clientWidth;
+            canvas.height = elements.capturedImage.clientHeight;
+            
+            const scaleX = canvas.width / elements.processCanvas.width;
+            const scaleY = canvas.height / elements.processCanvas.height;
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            results.forEach((result, idx) => {
+                const bb = result.detected.contour.boundingBox;
+                const color = result.status === 'pass' ? '#00ff88' : 
+                              result.status === 'fail' ? '#e94560' : '#ffa500';
+                
+                // Draw bounding box
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 3;
+                ctx.strokeRect(
+                    bb.x * scaleX, 
+                    bb.y * scaleY, 
+                    bb.width * scaleX, 
+                    bb.height * scaleY
+                );
+                
+                // Draw label
+                ctx.fillStyle = color;
+                ctx.font = 'bold 14px sans-serif';
+                ctx.fillText(
+                    `#${idx + 1}: ${(result.score * 100).toFixed(0)}%`,
+                    bb.x * scaleX,
+                    bb.y * scaleY - 5
+                );
+            });
+        }
+        
+        function showToast(message, type = '') {
+            elements.toast.textContent = message;
+            elements.toast.className = `toast show ${type}`;
+            setTimeout(() => elements.toast.classList.remove('show'), 3000);
+        }
+        
+        // Camera selection change
+        document.getElementById('cameraSelect').addEventListener('change', () => {
+            stopCamera();
+            startCamera();
+        });
+        
+        // Test camera permission
+        async function testCameraPermission() {
+            const statusEl = document.getElementById('cameraStatus');
+            const helpBox = document.getElementById('cameraPermissionHelp');
+            
+            statusEl.textContent = '🔄 Kontrollin...';
+            statusEl.className = 'camera-status';
+            
+            try {
+                // Try to get camera access directly - most reliable method
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: 'environment' } 
+                });
+                
+                // Success - camera works
+                stream.getTracks().forEach(track => track.stop());
+                
+                statusEl.textContent = '✅ Lubatud';
+                statusEl.className = 'camera-status granted';
+                helpBox.style.display = 'none';
+                showToast('Kaamera töötab!', 'success');
+                return true;
+                
+            } catch (error) {
+                console.error('Camera test error:', error);
+                
+                if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+                    statusEl.textContent = '❌ Keelatud';
+                    statusEl.className = 'camera-status denied';
+                    helpBox.style.display = 'block';
+                    showToast('Kaamera ligipääs keelatud', 'error');
+                } else if (error.name === 'NotFoundError') {
+                    statusEl.textContent = '❌ Kaamerat ei leitud';
+                    statusEl.className = 'camera-status denied';
+                    showToast('Kaamerat ei leitud', 'error');
+                } else if (error.name === 'NotReadableError') {
+                    statusEl.textContent = '⚠️ Kaamera kasutusel';
+                    statusEl.className = 'camera-status prompt';
+                    showToast('Kaamera on teise rakenduse poolt kasutusel', 'error');
+                } else if (error.name === 'SecurityError') {
+                    statusEl.textContent = '❌ HTTPS vajalik';
+                    statusEl.className = 'camera-status denied';
+                    helpBox.style.display = 'block';
+                    showToast('Kaamera vajab HTTPS ühendust', 'error');
+                } else {
+                    statusEl.textContent = '⚠️ Viga: ' + error.name;
+                    statusEl.className = 'camera-status denied';
+                    showToast('Kaamera viga: ' + error.message, 'error');
+                }
+                return false;
+            }
+        }
+        
+        // Check camera permission on page load - try actual access
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(async () => {
+                const statusEl = document.getElementById('cameraStatus');
+                
+                // Check if we're on HTTPS or localhost
+                const isSecure = location.protocol === 'https:' || 
+                                 location.hostname === 'localhost' || 
+                                 location.hostname === '127.0.0.1';
+                
+                if (!isSecure) {
+                    statusEl.textContent = '⚠️ HTTPS vajalik';
+                    statusEl.className = 'camera-status prompt';
+                    return;
+                }
+                
+                // Try quick camera check
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                    stream.getTracks().forEach(track => track.stop());
+                    statusEl.textContent = '✅ Lubatud';
+                    statusEl.className = 'camera-status granted';
+                } catch (error) {
+                    if (error.name === 'NotAllowedError') {
+                        statusEl.textContent = '❌ Keelatud';
+                        statusEl.className = 'camera-status denied';
+                    } else {
+                        statusEl.textContent = '❓ Kontrolli';
+                        statusEl.className = 'camera-status prompt';
+                    }
+                }
+            }, 1000);
+        });
+    </script>
+</body>
+</html>
